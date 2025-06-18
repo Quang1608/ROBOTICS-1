@@ -4,7 +4,7 @@ PS2X ps2x; // create PS2 Controller Class object
 #define BEBUG_CTRL
 
 // calibration for different kinds of PS2 controller, this value only suitable for the PS2 controller comes with VRC2023 K12 Maker kit 
-#define X_JOY_CALIB 127
+#define X_JOY_CALIB 127 
 #define Y_JOY_CALIB 128
 
 #define PS2_DAT 12 // MISO  19
@@ -31,15 +31,18 @@ void setupPS2controller()
 bool PS2control()
 {
   int speed = NORM_SPEED;
-  if (ps2x.Button(PSB_R2))
+  if (ps2x.Button(PSB_R1))
     speed = TOP_SPEED;
-   if (ps2x.ButtonPressed(PSB_SELECT))
+
+  if (ps2x.ButtonPressed(PSB_SELECT))
     driving_mode =! driving_mode;
   
 
   int nJoyX = X_JOY_CALIB - ps2x.Analog(PSS_RX); // read x-joystick
   // Serial.println(nJoyX);
   int nJoyY = Y_JOY_CALIB - (driving_mode ? ps2x.Analog(PSS_LY) :ps2x.Analog(PSS_RY)); // read y-joystick
+  nJoyX = map(nJoyX, 0, 128, 0, 255);
+  nJoyY = map(nJoyY, 0, 128, 0, 255);
   // Serial.println(nJoyY);
   int nMotMixL;                          // Motor (left) mixed output
   int nMotMixR;                          // Motor (right) mixed output
@@ -91,6 +94,11 @@ bool PS2control()
     c2 = abs(nMotMixL);
     c2 = map(c2, 0, 128, 0, speed);
   }
+
+  c1 = constrain(c1, 0, speed);
+  c2 = constrain(c2, 0, speed);
+  c3 = constrain(c3, 0, speed);
+  c4 = constrain(c4, 0, speed);
   setPWMMotors(c1, c2, c3, c4);
   return 1;
 }

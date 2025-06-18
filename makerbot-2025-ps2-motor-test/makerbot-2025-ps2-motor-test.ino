@@ -21,6 +21,11 @@ void setup()
 void loop()
 {
   ps2x.read_gamepad(0, 0);
-  PS2control();
+  // PS2control();
+  bool ps2 = PS2control();
+  unsigned long lastInputTime = millis();
+  if ((ps2) && ((unsigned long) (millis() - lastInputTime) > 21))
+    setPWMMotors(0, 0, 0, 0);
+    delay(30);
   delay(50);
 }
