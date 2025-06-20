@@ -1,6 +1,7 @@
 #include <stdio.h>
 #include <Wire.h>
 #include <Adafruit_PWMServoDriver.h>
+#include "hardware.h"
 
 #define MIN_PWM 0
 #define MAX_PWM 4095
@@ -16,9 +17,9 @@
 #define MOTOR2_CHANNEL1 14
 #define MOTOR2_CHANNEL2 15
 
-Adafruit_PWMServoDriver pwm = Adafruit_PWMServoDriver();
+//Adafruit_PWMServoDriver pwm = Adafruit_PWMServoDriver();
 
-void setWheelMotors(int c1, int c2, int c3, int c4)
+void setWheelMotors(int c1 = 0, int c2 = 0, int c3 = 0, int c4 = 0)
 {
   char dbg_str[30];
   sprintf(dbg_str,"C1: %d\tC2: %d\tC3: %d\tC4: %d",c1,c2,c3,c4);
@@ -31,7 +32,7 @@ void setWheelMotors(int c1, int c2, int c3, int c4)
 }
 
 // set motor channel 12, 13
-void setMotor1(int speed){
+void setMotor1(int speed = 0){
   if (speed == 0){
     pwm.setPin(MOTOR1_CHANNEL1, 0);
     pwm.setPin(MOTOR1_CHANNEL2, 0);
@@ -41,7 +42,7 @@ void setMotor1(int speed){
 }
 
 // set motor channel 14, 15
-void setMotor2(int speed){
+void setMotor2(int speed = 0){
   if (speed == 0){
     pwm.setPin(MOTOR2_CHANNEL1, 0);
     pwm.setPin(MOTOR2_CHANNEL2, 0);
@@ -50,17 +51,9 @@ void setMotor2(int speed){
   else pwm.setPin(MOTOR2_CHANNEL2, -speed);
 }
 
-void setServo(uint8_t channel, uint16_t pulse, bool byMicroseconds = false) {
-  if (byMicroseconds){
-    pwm.writeMicroseconds(channel, pulse);
-  } else {
-    pwm.setPWM(channel, 0, pulse);
-  }
-}
-
 void initMotors()
 {
-  Wire.begin(); // SDA, SCL, 400000);
+  Wire.begin(); // SDA, SCL,400000);
   pwm.begin();
   pwm.setOscillatorFrequency(27000000);
   pwm.setPWMFreq(1600);

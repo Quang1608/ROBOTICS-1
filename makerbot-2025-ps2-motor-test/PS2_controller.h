@@ -1,6 +1,7 @@
 #include <PS2X_lib.h>
 
-PS2X ps2x; // create PS2 Controller Class object
+PS2X ps2x;
+
 #define BEBUG_CTRL
 
 // calibration for different kinds of PS2 controller, this value only suitable for the PS2 controller comes with VRC2023 K12 Maker kit 
@@ -12,29 +13,15 @@ PS2X ps2x; // create PS2 Controller Class object
 #define PS2_SEL 15 // SS     5
 #define PS2_CLK 14 // SLK   18
 
-// define function to ps2 buttons
-#define FORCE_STOP PSB_RED
-#define BOOST_SPEED_WHEEL PSB_PINK
-#define BOOST_SPEED_MOTOR PSB_GREEN
-#define CHANGE_DRIVING_MODE PSB_SELECT
-#define UP_MOTOR_1 PSB_PAD_UP
-#define DOWN_MOTOR_1 PSB_PAD_DOWN
-//#define CONTROL_SERVO PSB_PINK
-#define UP_SERVO PSB_PAD_RIGHT
-#define DOWN_SERVO PSB_PAD_LEFT
-
 #define TOP_SPEED 4095
-#define HIGH_SPEED 3072
 #define NORM_SPEED 2048
-//#define TURNING_FACTOR 1
+#define TURNING_FACTOR 1
+
+#define SERVO_1_CHANNEL 2
 
 #define SINGLE_HAND_DRIVING 0
 #define TWO_HAND_DRIVING 1
 bool driving_mode = SINGLE_HAND_DRIVING;
-unsigned long lastModeToggle = 0;
-
-int servo_mode = 0;
-
 void setupPS2controller()
 {
   int err = -1;
@@ -45,44 +32,79 @@ void setupPS2controller()
 
 }
 bool PS2control()
-{ 
-  ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
-  // Force Stop
-  ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
-
-  if (ps2x.ButtonPressed(FORCE_STOP)){
-    setWheelMotors(0, 0, 0, 0);
-    setMotor1(0);
-    setMotor2(0);
-    Serial.println("All motors force stopped");
-    return 1;
-  }
-
-  ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
-  // Wheel Motors
-  ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
-
+{
+  /*
+  * Driving functions
+  */
   int speed = NORM_SPEED;
-  if (ps2x.Button(BOOST_SPEED_WHEEL))
+  if ((ps2x.Button(PSB_L3)) || (ps2x.Button(PSB_R3)))
     speed = TOP_SPEED;
 
-  if (ps2x.ButtonPressed(CHANGE_DRIVING_MODE) && millis() - lastModeToggle > 300) {
-    driving_mode = !driving_mode;
-    lastModeToggle = millis();
-  }
+  if (ps2x.ButtonPressed(PSB_SELECT))
+    driving_mode =! driving_mode;
   
-  int nJoyX = X_JOY_CALIB - ps2x.Analog(PSS_RX); // read x-joystick;
+  /*
+  2 360 servo use L/R1 and L/R2.
+  2 180 servo use A/B/X/Y: ButtonPressed() -> directly move to 180 or 90 degree.
+
+  360 servo uses pulse length to move clockwise and counterclockwise.
+  180 servo uses pulse length to move to a specific angle.
+  setPWM() and writeMicroseconds() are indifferent.
+
+  2 360 servos use channel 2 and 3, for more info refer to servo.h 
+  */
+  if (ps2x.Button(PSB_L1)) // First 360 servo moves counterclockwise
+    setServoUS(SERVO_1_CHANNEL, 1000);
+  else if (ps2x.Button(PSB_L2)) // First 360 servo moves clockwise
+    setServoUS(SERVO_1_CHANNEL, 2000);
+  else // servo stop
+    setServoUS(SERVO_1_CHANNEL, 1500);
+    
+  // if (ps2x.Button(PSB_R1)) // Second 360 servo moves counterclockwise
+  //   setServoUS(SERVO_1_CHANNEL, 1000);
+
+  // if (ps2x.Button(PSB_R2)) // Second 360 servo moves clockwise
+  //   setServoUS(SERVO_1_CHANNEL, 2000);
+    
+  delay(20); // Prevent flooding
+
+  /*
+  Raising mechanism
+
+  The DC Motor should be wired to channel 5 and 6
+  The code below "should" only raise the box, swap to channel 6 if not moving correctly
+  */
+  if (ps2x.Button(PSB_GREEN)) {
+    setMotor1(2000);
+    setMotor2(2000);
+  }
+  else {
+    setMotor1(0);
+  }
+  /*
+  Hanging Mechanism
+
+  The geared DC Motor here should be wired to channel 7 and 8
+  The code below should lower the box and pulling the bar down, swap to channel 8 if the gear is not moving correctly
+  */
+  
+  // Work in progress 
+
+  /*
+  Robot Movement 
+  */
+  int nJoyX = X_JOY_CALIB - ps2x.Analog(PSS_RX); // read x-joystick
+  // Serial.println(nJoyX);
   int nJoyY = Y_JOY_CALIB - (driving_mode ? ps2x.Analog(PSS_LY) :ps2x.Analog(PSS_RY)); // read y-joystick
+  nJoyX = map(nJoyX, 0, 128, 0, 255);
+  nJoyY = map(nJoyY, 0, 128, 0, 255);
+  // Serial.println(nJoyY);
   int nMotMixL;                          // Motor (left) mixed output
   int nMotMixR;                          // Motor (right) mixed output
-  // nJoyX = map(nJoyX, 0, 128, 0, 255);
-  // nJoyY = map(nJoyY, 0, 128, 0, 255);
-  // Serial.println(nJoyY);
-  // Serial.println(nJoyX)
 
   if(nJoyX == -1 && nJoyY == 0) // in case of lost connection with the wireless controller, only used in VRC2023 PS2 wireless controller 
   {
-    setWheelMotors(0, 0, 0, 0);
+    setWheelMotors();
     return 0;
   }
 
@@ -97,14 +119,13 @@ bool PS2control()
     nMotMixL = nJoyY;
     nMotMixR = nJoyY;
   }
-
   #ifdef BEBUG_CTRL
   Serial.print(F("Calculated value from joystick: "));
   // Serial.print(nMotMixL);
   Serial.print("\t");
   // Serial.println(nMotMixR);
   #endif
-
+  
   int c1 = 0, c2 = 0, c3 = 0, c4 = 0;
 
   if (nMotMixR > 0)
@@ -135,43 +156,5 @@ bool PS2control()
   c3 = constrain(c3, 0, speed);
   c4 = constrain(c4, 0, speed);
   setWheelMotors(c1, c2, c3, c4);
-
-  ///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
-  // Additional Motors
-  ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
-
-  if (ps2x.Button(UP_MOTOR1)) setMotor1(ps2x.Button(BOOST_SPEED_MOTOR) ? HIGH_SPEED : NORM_SPEED);
-  else if (ps2x.Button(DOWN_MOTOR1)) setMotor1(ps2x.Button(BOOST_SPEED_MOTOR) ? HIGH_SPEED : NORM_SPEED);
-  else setMotor1(0);
-
-  ///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
-  // Servo control
-  ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
-
-  // SERVO 360 controls
-  if (ps2x.Button(UP_SERVO)) setServo(2, 2000, true);
-  else if (ps2x.Button(DOWN_SERVO)) setServo(2, 1000, true);
-  else setServo(2, 1500, true);
-
-  // SERVO 180 controls
-  // if (ps2x.ButtonPressed(CONTROL_SERVO)){
-  //   servo_mode = (servo_mode + 1) % 5;
-  //   if (servo_mode == 0){
-  //     // set servo to 0 degree
-  //   }
-  //   else if (servo_mode == 1){
-  //     // set servo to 45 degree
-  //   } 
-  //   else if (servo_mode == 2){
-  //     // set servo to 90 degree
-  //   }
-  //   else if (servo_mode == 3){
-  //     // set servo to 135 degree
-  //   }
-  //   else if (servo_mode == 4){
-  //     // set servo to 180 degree
-  //   }
-  //}
-
   return 1;
 }
