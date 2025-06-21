@@ -37,6 +37,7 @@ PS2X ps2x;
 #define TWO_HAND_DRIVING 1
 bool driving_mode = SINGLE_HAND_DRIVING;
 unsigned long lastSwitchDrivingMode = 0;
+int tc1, tc2, tc3, tc4;
 
 unsigned long lastForceStop = 0;
 
@@ -112,7 +113,7 @@ bool PS2control()
     setMotor2(RAISING_SPEED);
   } 
   else if (ps2x.Button(HANGING)){
-    setMotor1(RAISING_SPEED);
+    setMotor1(-RAISING_SPEED);
     setMotor2(-RAISING_SPEED);
   }
   else {
@@ -191,6 +192,12 @@ bool PS2control()
   c2 = constrain(c2, 0, speed);
   c3 = constrain(c3, 0, speed);
   c4 = constrain(c4, 0, speed);
-  setWheelMotors(c1, c2, c3, c4);
+  // setWheelMotors(c1, c2, c3, c4);
+  if ((tc1 != c1) || (tc2 != c2) || (tc3 != c3) || (tc4 != c4)) {
+    setWheelMotors(0, 0, 0, 0);
+    tc1 = c1, tc2 = c2, tc3 = c3, tc4 = c4;
+  } else {
+    setWheelMotors(c1, c2, c3, c4);
+  }
   return 1;
 }
