@@ -15,7 +15,7 @@ void setup()
 {
   Serial.begin(115200);
   initMotors();
-  initServos();
+  //initServos(); not necessary as init motors already begin() and setPWMFreq()
   setupPS2controller();
   Serial.println("Done setup!");
 }
@@ -23,10 +23,11 @@ void setup()
 void loop()
 {
   ps2x.read_gamepad(0, 0);
-  bool ps2 = PS2control();
-  unsigned long lastInputTime = millis();
-  if ((ps2) && ((unsigned long) (millis() - lastInputTime) > 21))
-    setWheelMotors(0, 0, 0, 0);
-    delay(30);
-  delay(50);
+  PS2control();
+  //bool ps2 = PS2control();
+  // unsigned long lastInputTime = millis();
+  // if ((ps2) && ((unsigned long) (millis() - lastInputTime) > 21))
+  //   setWheelMotors(0, 0, 0, 0);
+  //   delay(30);
+  delay(100);
 }
